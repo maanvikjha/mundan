@@ -347,6 +347,8 @@ img:first-of-type + * {
 <!-- Version 60: Programme of Events font sizes increased -->
 
 <!-- Version 61: Browser title updated -->
+
+<!-- Version 62: photo popup opens only on intentional tap/click, not scroll -->
 </head>
 <body>
 <div class="bg-pattern"></div><svg class="mandala-bg" viewbox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
@@ -681,12 +683,19 @@ img:first-of-type + * {
   set('en');
 </script>
 <div class="photo-lightbox" id="photoLightbox"><button class="photo-lightbox-back" type="button">← Back</button><button class="photo-lightbox-close" type="button">Close</button><img alt="Family photo preview" id="photoLightboxImg"/></div>
+
 <script>
 (function() {
   function setupPhotoLightbox() {
     var lightbox = document.getElementById('photoLightbox');
     var lightboxImg = document.getElementById('photoLightboxImg');
     if (!lightbox || !lightboxImg) return;
+
+    var touchStartX = 0;
+    var touchStartY = 0;
+    var touchStartTime = 0;
+    var moved = false;
+    var suppressNextClickUntil = 0;
 
     function openPhoto(src, alt) {
       lightboxImg.src = src;
@@ -703,12 +712,33 @@ img:first-of-type + * {
 
     document.querySelectorAll('.family-photo-img').forEach(function(img) {
       img.addEventListener('click', function(e) {
-        e.preventDefault();
+        if (Date.now() < suppressNextClickUntil) return;
         openPhoto(img.src, img.alt);
       });
+
+      img.addEventListener('touchstart', function(e) {
+        if (!e.touches || !e.touches.length) return;
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        touchStartTime = Date.now();
+        moved = false;
+      }, {passive:true});
+
+      img.addEventListener('touchmove', function(e) {
+        if (!e.touches || !e.touches.length) return;
+        var dx = Math.abs(e.touches[0].clientX - touchStartX);
+        var dy = Math.abs(e.touches[0].clientY - touchStartY);
+        if (dx > 10 || dy > 10) moved = true;
+      }, {passive:true});
+
       img.addEventListener('touchend', function(e) {
-        e.preventDefault();
-        openPhoto(img.src, img.alt);
+        var duration = Date.now() - touchStartTime;
+        suppressNextClickUntil = Date.now() + 600;
+
+        if (!moved && duration < 450) {
+          e.preventDefault();
+          openPhoto(img.src, img.alt);
+        }
       }, {passive:false});
     });
 
@@ -733,5 +763,6 @@ img:first-of-type + * {
   }
 })();
 </script>
+
 </body>
 </html>
